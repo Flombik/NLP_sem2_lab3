@@ -1,12 +1,24 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.views.generic.edit import FormView
 
 from .forms import FileFieldForm
 from .models import Document
 
+from django.conf import settings
+import os
+
+BASE_DIR = settings.BASE_DIR
+SUM_TYPES = ('gensim', 'spacy', 'own')
+SUM_FUNCS = {
+    'gensim': Document.gensim_summary,
+    'spacy': Document.spacy_summary,
+    'own': Document.own_summary,
+}
+
 
 def perform_file_upload(file, filename: str) -> str:
-    path = 'D:/Projects/NLP_sem2_lab3/results/{}'.format(filename)
+    path = str(BASE_DIR) + f'/storage/{filename}'
     with open(path, 'wb') as f:
         for chunk in file.chunks():
             f.write(chunk)
@@ -16,16 +28,22 @@ def perform_file_upload(file, filename: str) -> str:
 def add_file_to_db(filepath: str) -> None:
     with open(filepath, 'rt', encoding='utf-8') as file:
         Document.objects.create(title=filepath.split('/')[-1].split('.')[0], text=file.read())
+    os.remove(filepath)
 
 
 # Create your views here.
 def index(request):
-    if request.method == 'POST' and request.FILES is not None:
-        print(request.FILES)
-        for file in request.FILES['files']:
-            print(file.name)
-        return render(request, 'index.html')
-    return render(request, 'index.html')
+    return render(request, 'index.html', context={'documents': Document.objects.all()})
+
+
+def document(request, pk=None, sum_type='gensim'):
+    if pk is not None:
+        obj = get_object_or_404(Document, pk=pk)
+        if sum_type in SUM_TYPES:
+            func = SUM_FUNCS[sum_type]
+            return render(request, 'document.html',
+                          context={'document': obj, 'essay': func(obj), 'keywords': obj.keywords()})
+    return redirect(reverse('index'))
 
 
 class FileFieldView(FormView):

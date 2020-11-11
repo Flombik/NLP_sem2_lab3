@@ -14,12 +14,13 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path
 
-from essay_generator.views import index, FileFieldView
+from essay_generator.views import index, FileFieldView, document
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', index),
-    path('upload/', FileFieldView.as_view())
+    path('', index, name='index'),
+    path('upload/', FileFieldView.as_view(), name='upload'),
+    re_path(r'^document/(?P<pk>\w+)/(?P<sum_type>\w+)$', document, name='document')
 ]
